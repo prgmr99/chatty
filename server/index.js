@@ -3,7 +3,7 @@ const path = require('path');
 const WebSocket = require('ws');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // 정적 파일 제공 (public 폴더)
 app.use(express.static(path.join(__dirname, '../public')));
