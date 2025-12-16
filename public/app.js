@@ -11,11 +11,144 @@ const userCountSpan = document.getElementById('user-count');
 const loginError = document.getElementById('login-error');
 
 // 상태 관리
-let ws = null; // WebSocket 연결 (Phase 2에서 구현)
+let ws = null;
 let currentUser = null;
 let users = [];
 
-// ===== Phase 1: 기본 UI 이벤트 핸들러 =====
+// ===== Phase 2: WebSocket 연결 =====
+
+// WebSocket 연결 초기화
+function connectWebSocket() {
+  // WebSocket 서버 URL (현재 페이지의 호스트 사용)
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}`;
+  
+  console.log('🔌 WebSocket 연결 시도:', wsUrl);
+  
+  ws = new WebSocket(wsUrl);
+  
+  // 연결 성공
+  ws.onopen = () => {
+    console.log('✅ WebSocket 연결 성공');
+  };
+  
+  // 메시지 수신
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      console.log('📩 수신:', data);
+      handleServerMessage(data);
+    } catch (error) {
+      console.error('❌ 메시지 파싱 에러:', error);
+    }
+  };
+  
+  // 연결 종료
+  ws.onclose = () => {
+    console.log('🔌 WebSocket 연결 종료');
+    ws = null;
+    
+    // 채팅 화면이 표시 중이면 재연결 시도
+    if (!chatScreen.classList.contains('hidden')) {
+      addSystemMessage('연결이 끊어졌습니다. 페이지를 새로고침해주세요.');
+    }
+  };
+  
+  // 에러 처리
+  ws.onerror = (error) => {
+    console.error('❌ WebSocket 에러:', error);
+    showLoginError('서버 연결에 실패했습니다.');
+  };
+}
+
+// 서버 메시지 처리
+function handleServerMessage(data) {
+  switch (data.type) {
+    case 'joined':
+      // 입장 성공
+      handleJoinSuccess(data);
+      break;
+      
+    case 'message':
+      // 새 메시지
+      handleNewMessage(data);
+      break;
+      
+    case 'user-joined':
+      // 새 사용자 입장
+      handleUserJoined(data);
+      break;
+      
+    case 'user-left':
+      // 사용자 퇴장
+      handleUserLeft(data);
+      break;
+      
+    case 'error':
+      // 에러
+      handleServerError(data);
+      break;
+      
+    default:
+      console.warn('알 수 없는 메시지 타입:', data.type);
+  }
+}
+
+// 입장 성공 처리
+function handleJoinSuccess(data) {
+  console.log('🎉 입장 성공:', data);
+  currentUser = { id: data.userId, nickname: nicknameInput.value.trim() };
+  
+  // 화면 전환
+  switchToChat();
+  
+  // 사용자 목록 업데이트
+  updateUserList(data.users);
+  
+  // 환영 메시지
+  addSystemMessage(`${currentUser.nickname}님, 환영합니다!`);
+}
+
+// 새 메시지 처리
+function handleNewMessage(data) {
+  const isOwn = currentUser && data.userId === currentUser.id;
+  addMessage({
+    nickname: data.nickname,
+    content: data.content,
+    timestamp: data.timestamp,
+    isOwn
+  });
+}
+
+// 새 사용자 입장 처리
+function handleUserJoined(data) {
+  addSystemMessage(`${data.nickname}님이 입장하셨습니다.`);
+  updateUserList(data.users);
+}
+
+// 사용자 퇴장 처리
+function handleUserLeft(data) {
+  addSystemMessage(`${data.nickname}님이 퇴장하셨습니다.`);
+  updateUserList(data.users);
+}
+
+// 서버 에러 처리
+function handleServerError(data) {
+  console.error('서버 에러:', data.message);
+  showLoginError(data.message);
+}
+
+// WebSocket으로 메시지 전송
+function sendToServer(data) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(data));
+  } else {
+    console.error('WebSocket이 연결되지 않았습니다.');
+    addSystemMessage('서버와 연결이 끊어졌습니다.');
+  }
+}
+
+// ===== UI 이벤트 핸들러 =====
 
 // 입장 버튼 클릭 이벤트
 joinBtn.addEventListener('click', handleJoin);
@@ -39,7 +172,7 @@ messageInput.addEventListener('keypress', (e) => {
 
 // ===== 함수 정의 =====
 
-// 입장 처리 (Phase 2에서 WebSocket 연결 추가 예정)
+// 입장 처리
 function handleJoin() {
   const nickname = nicknameInput.value.trim();
   
@@ -54,16 +187,25 @@ function handleJoin() {
     return;
   }
   
-  // Phase 2에서 WebSocket 연결을 추가할 예정
-  console.log('입장 시도:', nickname);
+  // 입장 버튼 비활성화
+  joinBtn.disabled = true;
+  joinBtn.textContent = '입장 중...';
   
-  // 임시로 화면 전환만 테스트 (Phase 2에서 제거)
-  currentUser = { nickname };
-  switchToChat();
-  addSystemMessage(`${nickname}님이 입장하셨습니다.`);
+  // 서버로 입장 요청
+  console.log('📤 입장 요청:', nickname);
+  sendToServer({
+    type: 'join',
+    nickname: nickname
+  });
+  
+  // 3초 후 버튼 다시 활성화 (타임아웃)
+  setTimeout(() => {
+    joinBtn.disabled = false;
+    joinBtn.textContent = '입장하기';
+  }, 3000);
 }
 
-// 메시지 전송 처리 (Phase 2에서 WebSocket 전송 추가 예정)
+// 메시지 전송 처리
 function handleSendMessage() {
   const content = messageInput.value.trim();
   
@@ -71,15 +213,16 @@ function handleSendMessage() {
     return;
   }
   
-  // Phase 3에서 WebSocket으로 메시지 전송 구현 예정
-  console.log('메시지 전송:', content);
+  if (!currentUser) {
+    console.error('로그인되지 않았습니다.');
+    return;
+  }
   
-  // 임시로 로컬에만 메시지 표시 (Phase 3에서 제거)
-  addMessage({
-    nickname: currentUser.nickname,
-    content,
-    timestamp: new Date().toISOString(),
-    isOwn: true
+  // 서버로 메시지 전송
+  console.log('📤 메시지 전송:', content);
+  sendToServer({
+    type: 'message',
+    content: content
   });
   
   messageInput.value = '';
@@ -166,5 +309,8 @@ function escapeHtml(text) {
 
 // ===== 초기화 =====
 console.log('✅ Simple Chat App 클라이언트 로딩 완료');
-console.log('Phase 1: 기본 UI 구현 완료');
-console.log('다음 단계: Phase 2에서 WebSocket 연결을 추가할 예정입니다.');
+console.log('🔌 WebSocket 연결 시작...');
+
+// 페이지 로드 시 WebSocket 연결
+connectWebSocket();
+
