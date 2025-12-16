@@ -57,14 +57,19 @@ wss.on('connection', (ws) => {
     if (client && client.nickname) {
       console.log(`👋 클라이언트 퇴장: ${client.nickname} (${client.id})`);
       
-      // 다른 클라이언트들에게 퇴장 알림
+      // 클라이언트 삭제 (먼저 삭제해야 정확한 사용자 목록 전송)
+      clients.delete(ws);
+      
+      // 다른 클라이언트들에게 퇴장 알림 (삭제 후 사용자 목록)
       broadcast({
         type: 'user-left',
         nickname: client.nickname,
         users: getActiveUsers()
-      }, ws);
+      });
+    } else {
+      // 닉네임이 없는 경우 (입장하지 않은 연결)
+      clients.delete(ws);
     }
-    clients.delete(ws);
   });
   
   // 에러 처리
