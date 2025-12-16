@@ -1,99 +1,148 @@
-# Chatty
+# 💬 Chatty
 
-실시간 WebSocket 기반 채팅 애플리케이션
+Real-time WebSocket-based Chat Application
 
-## 개요
+## Overview
 
-Chatty는 Express와 WebSocket(ws)을 활용한 경량 실시간 채팅 플랫폼입니다. 최소한의 의존성으로 실시간 양방향 통신을 구현하며, 향후 엔터프라이즈급 협업 도구로 확장 가능한 아키텍처를 제공합니다.
+Chatty is a lightweight real-time chat platform built with Express and WebSocket (ws). It implements real-time bidirectional communication with minimal dependencies and provides an extensible architecture for future enterprise-grade collaboration tools.
 
-### 핵심 가치
+### Core Values
 
-- **실시간성**: WebSocket 기반 저지연 메시징
-- **확장성**: 모듈형 구조로 쉬운 기능 추가
-- **간결성**: 외부 프레임워크 의존성 최소화
-- **생산성**: 빠른 프로토타이핑과 배포
+- **Real-time**: Low-latency messaging with WebSocket
+- **Scalability**: Modular structure for easy feature additions
+- **Simplicity**: Minimal external framework dependencies
+- **Productivity**: Fast prototyping and deployment
 
-## 설치 및 실행
+## Installation & Setup
 
-### 요구사항
+### Requirements
 
-- Node.js 14.x 이상
-- pnpm 6.x 이상
+- Node.js 14.x or higher
+- pnpm 6.x or higher
 
-### 설치
+### Installation
 
 ```bash
-# pnpm이 설치되지 않은 경우
+# Install pnpm if not already installed
 npm install -g pnpm
 
-# 프로젝트 의존성 설치
+# Install project dependencies
 pnpm install
 ```
 
-### 개발 서버 실행
+### Running Development Server
 
 ```bash
 pnpm start
 ```
 
-서버는 기본적으로 `http://localhost:3001`에서 실행됩니다. 포트는 환경변수 `PORT`로 변경 가능합니다.
+The server runs on `http://localhost:3001` by default. You can change the port using the `PORT` environment variable.
 
 ```bash
 PORT=3000 pnpm start
 ```
 
-## 아키텍처
+## Architecture
 
-### 디렉토리 구조
+### Directory Structure
 
 ```
 simple-chat/
 ├── server/
-│   └── index.js          # Express + WebSocket 서버
+│   └── index.js          # Express + WebSocket server
 ├── public/
-│   ├── index.html        # 클라이언트 UI
-│   ├── styles.css        # 스타일시트
-│   └── app.js            # 클라이언트 로직
+│   ├── index.html        # Client UI
+│   ├── styles.css        # Stylesheets
+│   └── app.js            # Client logic
 ├── .agent/
 │   └── rules/
 │       └── code-style-guide.md
 └── package.json
 ```
 
-### 기술 스택
+### Tech Stack
 
 **Backend**
-- Express 5.2.1 - HTTP 서버
-- ws 8.18.3 - WebSocket 서버
-- Node.js - 런타임 환경
+- Express 5.2.1 - HTTP server
+- ws 8.18.3 - WebSocket server
+- Node.js - Runtime environment
 
 **Frontend**
 - Vanilla JavaScript
-- CSS3 - 모던 스타일링 (Grid, Flexbox, Animations)
-- WebSocket API - 실시간 통신
+- CSS3 - Modern styling (Grid, Flexbox, Animations)
+- WebSocket API - Real-time communication
 
-**개발 도구**
-- pnpm - 빠르고 효율적인 패키지 관리
+**Development Tools**
+- pnpm - Fast and efficient package manager
 
-## 주요 기능
+## Features
 
-### 현재 구현된 기능 (v1.0)
+### Current Implementation (v1.0)
 
-1. **사용자 관리**
-   - 닉네임 기반 인증
-   - 중복 닉네임 방지
-   - 실시간 접속자 목록
+1. **User Management**
+   - Nickname-based authentication
+   - Duplicate nickname prevention
+   - Real-time user list
 
-2. **메시징**
-   - 실시간 메시지 송수신
-   - 브로드캐스팅
-   - 타임스탬프 표시
-   - XSS 방지 (HTML 이스케이프)
+2. **Messaging**
+   - Real-time message send/receive
+   - Broadcasting
+   - Timestamp display
+   - XSS prevention (HTML escaping)
 
-3. **사용자 경험**
-   - 반응형 디자인 (모바일/데스크톱)
-   - Enter 키 지원
-   - 자동 스크롤
-   - 입장/퇴장 알림
-   - 에러 처리 및 사용자 피드백
+3. **User Experience**
+   - Responsive design (Mobile/Desktop)
+   - Enter key support
+   - Auto-scroll
+   - Join/Leave notifications
+   - Error handling and user feedback
 
+## Deployment
+
+### Render
+
+This application is optimized for deployment on [Render](https://render.com).
+
+1. Push your code to GitHub
+2. Connect your repository to Render
+3. Configure:
+   - Build Command: `pnpm install`
+   - Start Command: `pnpm start`
+4. Deploy
+
+For detailed deployment instructions, see [Render Deployment Guide](/.gemini/antigravity/brain/82dc2ef5-5e5b-4444-bbc8-eb707f1e87ce/render-deployment-guide.md).
+
+## Development
+
+### Code Style
+
+See [Code Style Guide](.agent/rules/code-style-guide.md) for detailed coding conventions.
+
+**Key Rules**
+- Package manager: `pnpm` required
+- Indentation: 2 spaces
+- Variables: `const` preferred, `let` when needed
+- Naming: camelCase (functions/variables), PascalCase (classes)
+- Error handling: Explicit try-catch
+
+### Testing
+
+```bash
+# Start development server
+pnpm start
+
+# Test with multiple browser tabs
+# http://localhost:3001
+```
+
+## License
+
+ISC
+
+## Contributing
+
+Issues and PRs are welcome. Please check the [Code Style Guide](.agent/rules/code-style-guide.md) before contributing.
+
+---
+
+**Chatty** - An extensible chat platform for real-time collaboration
