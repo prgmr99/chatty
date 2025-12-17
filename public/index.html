@@ -40,14 +40,24 @@
 
       <!-- 메인 컨텐츠 -->
       <div class="chat-main">
-        <!-- 사용자 목록 (사이드바) -->
-        <aside class="user-list">
-          <h3>접속 중인 사용자</h3>
-          <ul id="users"></ul>
+        <!-- Room 목록 (왼쪽 사이드바) -->
+        <aside class="room-list-sidebar">
+          <div class="room-list-header">
+            <h3>📁 Rooms</h3>
+            <button id="create-room-btn" class="btn-small" title="Create Room">+</button>
+          </div>
+          <ul id="room-list"></ul>
         </aside>
 
         <!-- 메시지 영역 -->
         <div class="message-area">
+          <!-- Room 헤더 -->
+          <div class="room-header">
+            <h3 id="current-room-name">General</h3>
+            <span id="room-user-count" class="room-user-count">0 users</span>
+          </div>
+
+          <!-- 메시지 -->
           <div id="messages" class="messages"></div>
           
           <!-- 메시지 입력 -->
@@ -61,6 +71,29 @@
             <button id="send-btn" class="btn-primary">전송</button>
           </div>
         </div>
+
+        <!-- 사용자 목록 (오른쪽 사이드바) -->
+        <aside class="user-list">
+          <h3>접속 중인 사용자</h3>
+         <ul id="users"></ul>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <!-- Room 생성 모달 -->
+  <div id="create-room-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Create New Room</h2>
+      <input 
+        type="text" 
+        id="new-room-name" 
+        placeholder="Enter room name"
+        maxlength="50"
+      />
+      <div class="modal-buttons">
+        <button id="confirm-create-room" class="btn-primary">Create</button>
+        <button id="cancel-create-room" class="btn-secondary">Cancel</button>
       </div>
     </div>
   </div>

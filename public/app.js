@@ -10,10 +10,22 @@ const usersContainer = document.getElementById('users');
 const userCountSpan = document.getElementById('user-count');
 const loginError = document.getElementById('login-error');
 
+// Room 관련 DOM 요소
+const roomList = document.getElementById('room-list');
+const createRoomBtn = document.getElementById('create-room-btn');
+const createRoomModal = document.getElementById('create-room-modal');
+const newRoomNameInput = document.getElementById('new-room-name');
+const confirmCreateRoomBtn = document.getElementById('confirm-create-room');
+const cancelCreateRoomBtn = document.getElementById('cancel-create-room');
+const currentRoomName = document.getElementById('current-room-name');
+const roomUserCount = document.getElementById('room-user-count');
+
 // 상태 관리
 let ws = null;
 let currentUser = null;
 let users = [];
+let rooms = []; // Room 목록
+let currentRoom = null; // 현재 room ID
 
 // ===== Phase 2: WebSocket 연결 =====
 
@@ -83,6 +95,41 @@ function handleServerMessage(data) {
       // 사용자 퇴장
       handleUserLeft(data);
       break;
+
+    case 'room-list':
+      // Room 목록 수신
+      updateRoomList(data.rooms);
+      break;
+
+    case 'room-created':
+      // 새 room 생성됨
+      addSystemMessage(`New room "${data.room.name}" has been created`);
+      requestRoomList(); // 목록 갱신
+      break;
+
+    case 'room-joined':
+      // Room 입장 성공
+      messagesContainer.innerHTML = ''; // 메시지 초기화
+      updateUserList(data.users);
+      // Room 정보는 서버에서 roomId로만 보내므로, 목록에서 찾아야 함
+      const room = rooms.find(r => r.id === data.roomId);
+      if (room) {
+        updateCurrentRoomInfo(data.roomId, room.name, data.users.length);
+        addSystemMessage(`Joined room: ${room.name}`);
+      }
+      break;
+
+    case 'user-joined-room':
+      // 다른 사용자가 room에 입장
+      addSystemMessage(`${data.nickname} joined the room`);
+      updateUserList(data.users);
+      break;
+
+    case 'user-left-room':
+      //  다른 사용자가 room에서 퇴장
+      addSystemMessage(`${data.nickname} left the room`);
+      updateUserList(data.users);
+      break;
       
     case 'error':
       // 에러
@@ -101,6 +148,18 @@ function handleJoinSuccess(data) {
   
   // 화면 전환
   switchToChat();
+  
+  // Room 정보 설정
+  if (data.rooms) {
+    updateRoomList(data.rooms);
+  }
+  
+  if (data.currentRoom) {
+    const room = data.rooms ? data.rooms.find(r => r.id === data.currentRoom) : null;
+    if (room) {
+      updateCurrentRoomInfo(data.currentRoom, room.name, data.users.length);
+    }
+  }
   
   // 사용자 목록 업데이트
   updateUserList(data.users);
@@ -306,6 +365,126 @@ function escapeHtml(text) {
   div.textContent = text;
   return div.innerHTML;
 }
+
+// ===== Phase 1: Room 기능 =====
+
+// Room 목록 업데이트
+function updateRoomList(roomsData) {
+  rooms = roomsData;
+  roomList.innerHTML = '';
+  
+  rooms.forEach(room => {
+    const li = document.createElement('li');
+    li.dataset.roomId = room.id;
+    
+    // 현재 room이면 active 클래스 추가
+    if (room.id === currentRoom) {
+      li.classList.add('active');
+    }
+    
+    li.innerHTML = `
+      <div class="room-name">${escapeHtml(room.name)}</div>
+      <div class="room-users">${room.userCount} users</div>
+    `;
+    
+    // Room 클릭 시 입장
+    li.addEventListener('click', () => {
+      joinRoom(room.id);
+    });
+    
+    roomList.appendChild(li);
+  });
+}
+
+// Room 생성
+function createRoom() {
+  const roomName = newRoomNameInput.value.trim();
+  
+  if (!roomName) {
+    alert('Please enter a room name');
+    return;
+  }
+  
+  if (roomName.length < 2 || roomName.length > 50) {
+    alert('Room name must be between 2 and 50 characters');
+    return;
+  }
+  
+  sendToServer({
+    type: 'create-room',
+    roomName: roomName
+  });
+  
+  // 모달 닫기
+  closeCreateRoomModal();
+}
+
+// Room 입장
+function joinRoom(roomId) {
+  if (roomId === currentRoom) {
+    return; // 이미 현재 room
+  }
+  
+  sendToServer({
+    type: 'join-room',
+    roomId: roomId
+  });
+}
+
+// Room 리스트 요청
+function requestRoomList() {
+  sendToServer({
+    type: 'list-rooms'
+  });
+}
+
+// Room 생성 모달 열기
+function openCreateRoomModal() {
+  createRoomModal.classList.remove('hidden');
+  newRoomNameInput.value = '';
+  newRoomNameInput.focus();
+}
+
+// Room 생성 모달 닫기
+function closeCreateRoomModal() {
+  createRoomModal.classList.add('hidden');
+  newRoomNameInput.value = '';
+}
+
+// 현재 room 정보 업데이트
+function updateCurrentRoomInfo(roomId, roomName, userCount) {
+  currentRoom = roomId;
+  currentRoomName.textContent = roomName || 'Unknown Room';
+  roomUserCount.textContent = `${userCount} users`;
+  
+  // Room 목록에서 active 업데이트
+  roomList.querySelectorAll('li').forEach(li => {
+    if (li.dataset.roomId === roomId) {
+      li.classList.add('active');
+    } else {
+      li.classList.remove('active');
+    }
+  });
+}
+
+// Room 이벤트 리스너
+createRoomBtn.addEventListener('click', openCreateRoomModal);
+confirmCreateRoomBtn.addEventListener('click', createRoom);
+cancelCreateRoomBtn.addEventListener('click', closeCreateRoomModal);
+
+// Enter 키로 room 생성
+newRoomNameInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    createRoom();
+  }
+});
+
+// 모달 바깥 클릭 시 닫기
+createRoomModal.addEventListener('click', (e) => {
+  if (e.target === createRoomModal) {
+    closeCreateRoomModal();
+  }
+});
 
 // ===== 초기화 =====
 console.log('✅ Simple Chat App 클라이언트 로딩 완료');
