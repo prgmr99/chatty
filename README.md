@@ -49,14 +49,18 @@ PORT=3000 pnpm start
 ```
 simple-chat/
 ├── server/
-│   └── index.js          # Express + WebSocket server
+│   ├── index.js          # Express + WebSocket server
+│   └── roomManager.js    # Room management logic
 ├── public/
 │   ├── index.html        # Client UI
 │   ├── styles.css        # Stylesheets
 │   └── app.js            # Client logic
+├── .github/
+│   └── ISSUE_TEMPLATE/   # Issue templates
 ├── .agent/
 │   └── rules/
 │       └── code-style-guide.md
+├── LICENSE               # MIT License
 └── package.json
 ```
 
@@ -77,21 +81,30 @@ simple-chat/
 
 ## Features
 
-### Current Implementation (v1.0)
+### Current Implementation (v1.1)
 
-1. **User Management**
+1. **Multi-Room Chat System** 🆕
+   - Create custom chat rooms
+   - Join and switch between rooms
+   - Room list with user counts
+   - General room auto-created on server start
+   - Room-based message isolation
+
+2. **User Management**
    - Nickname-based authentication
    - Duplicate nickname prevention
-   - Real-time user list
+   - Real-time user list per room
 
-2. **Messaging**
+3. **Messaging**
    - Real-time message send/receive
-   - Broadcasting
+   - Room-based broadcasting
    - Timestamp display
    - XSS prevention (HTML escaping)
 
-3. **User Experience**
+4. **User Experience**
    - Responsive design (Mobile/Desktop)
+   - Room creation modal
+   - Active room highlighting
    - Enter key support
    - Auto-scroll
    - Join/Leave notifications
