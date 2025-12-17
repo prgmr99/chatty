@@ -137,7 +137,7 @@ pnpm start
 
 ## License
 
-ISC
+MIT License - see [LICENSE](LICENSE) file for details
 
 ## Contributing
 
