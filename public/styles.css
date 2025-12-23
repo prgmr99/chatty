@@ -562,3 +562,25 @@ input[type="text"]:focus {
     padding: 25px;
   }
 }
+
+/* Phase 2: 메시지 로딩 표시기 */
+.loading-indicator {
+  text-align: center;
+  padding: 12px;
+  color: var(--text-gray);
+  font-size: 0.9rem;
+  font-style: italic;
+  background: var(--bg-light);
+  border-radius: 8px;
+  margin: 10px 0;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}

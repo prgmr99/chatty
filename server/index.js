@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const WebSocket = require('ws');
 const RoomManager = require('./roomManager');
+const MessageModel = require('./messageModel');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -28,6 +29,9 @@ let clientIdCounter = 0;
 
 // Room 관리자 초기화
 const roomManager = new RoomManager();
+
+// Message 모델 초기화
+const messageModel = new MessageModel();
 
 console.log('📡 WebSocket 서버가 시작되었습니다.');
 
@@ -115,6 +119,14 @@ function handleMessage(ws, message) {
 
     case 'list-rooms':
       handleListRooms(ws);
+      break;
+
+    case 'get-messages':
+      handleGetMessages(ws, message.roomId, message.limit, message.offset);
+      break;
+
+    case 'get-messages-since':
+      handleGetMessagesSince(ws, message.roomId, message.since);
       break;
       
     case 'leave':
@@ -209,17 +221,34 @@ function handleChatMessage(ws, content) {
     return;
   }
   
-  console.log(`💬 [${client.currentRoom}] ${client.nickname}: ${content}`);
-  
-  // 현재 룸의 모든 클라이언트에게 메시지 브로드캐스트
-  roomManager.broadcastToRoom(client.currentRoom, {
+  const timestamp = new Date().toISOString();
+  const messageData = {
     type: 'message',
     userId: client.id,
     nickname: client.nickname,
     roomId: client.currentRoom,
     content: content.trim(),
-    timestamp: new Date().toISOString()
-  });
+    timestamp
+  };
+  
+  console.log(`💬 [${client.currentRoom}] ${client.nickname}: ${content}`);
+  
+  // 데이터베이스에 메시지 저장
+  try {
+    messageModel.saveMessage(
+      client.currentRoom,
+      client.id,
+      client.nickname,
+      content.trim(),
+      timestamp
+    );
+  } catch (error) {
+    console.error('❌ 메시지 DB 저장 실패:', error);
+    // DB 저장 실패해도 브로드캐스트는 진행
+  }
+  
+  // 현재 룸의 모든 클라이언트에게 메시지 브로드캐스트
+  roomManager.broadcastToRoom(client.currentRoom, messageData);
 }
 
 // 채팅방 생성 처리
@@ -359,6 +388,98 @@ function handleListRooms(ws) {
     type: 'room-list',
     rooms: roomManager.getRoomList()
   });
+}
+
+// 메시지 히스토리 조회 (페이지네이션)
+function handleGetMessages(ws, roomId, limit = 50, offset = 0) {
+  const client = clients.get(ws);
+  
+  if (!client || !client.nickname) {
+    sendToClient(ws, {
+      type: 'error',
+      message: '먼저 입장해주세요.'
+    });
+    return;
+  }
+
+  if (!roomManager.hasRoom(roomId)) {
+    sendToClient(ws, {
+      type: 'error',
+      message: '존재하지 않는 채팅방입니다.'
+    });
+    return;
+  }
+
+  try {
+    const messages = messageModel.getMessages(roomId, limit, offset);
+    const totalCount = messageModel.getMessageCount(roomId);
+    const hasMore = offset + limit < totalCount;
+
+    sendToClient(ws, {
+      type: 'message-history',
+      roomId,
+      messages,
+      hasMore,
+      offset,
+      limit
+    });
+
+    console.log(`📜 ${client.nickname}님이 ${roomId}의 메시지 ${messages.length}개 조회 (offset: ${offset})`);
+  } catch (error) {
+    console.error('❌ 메시지 조회 에러:', error);
+    sendToClient(ws, {
+      type: 'error',
+      message: '메시지 조회에 실패했습니다.'
+    });
+  }
+}
+
+// 특정 시각 이후 메시지 조회 (오프라인 동기화)
+function handleGetMessagesSince(ws, roomId, since) {
+  const client = clients.get(ws);
+  
+  if (!client || !client.nickname) {
+    sendToClient(ws, {
+      type: 'error',
+      message: '먼저 입장해주세요.'
+    });
+    return;
+  }
+
+  if (!roomManager.hasRoom(roomId)) {
+    sendToClient(ws, {
+      type: 'error',
+      message: '존재하지 않는 채팅방입니다.'
+    });
+    return;
+  }
+
+  if (!since) {
+    sendToClient(ws, {
+      type: 'error',
+      message: 'since 파라미터가 필요합니다.'
+    });
+    return;
+  }
+
+  try {
+    const messages = messageModel.getMessagesSince(roomId, since);
+
+    sendToClient(ws, {
+      type: 'messages-sync',
+      roomId,
+      messages,
+      since
+    });
+
+    console.log(`🔄 ${client.nickname}님이 ${roomId}의 메시지 동기화 (${messages.length}개, since: ${since})`);
+  } catch (error) {
+    console.error('❌ 메시지 동기화 에러:', error);
+    sendToClient(ws, {
+      type: 'error',
+      message: '메시지 동기화에 실패했습니다.'
+    });
+  }
 }
 
 // 퇴장 처리
