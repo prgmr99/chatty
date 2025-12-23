@@ -3,13 +3,73 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chatty</title>
+  
+  <!-- Primary Meta Tags -->
+  <title>Chatty - 실시간 채팅 플랫폼</title>
+  <meta name="title" content="Chatty - 실시간 채팅 플랫폼">
+  <meta name="description" content="WebSocket 기반 실시간 채팅 애플리케이션. 다중 채팅방, 메시지 영속성, 무한 스크롤을 지원하는 가볍고 빠른 채팅 플랫폼입니다.">
+  <meta name="keywords" content="채팅, 실시간 채팅, WebSocket, 채팅방, 메신저, 웹 채팅, real-time chat, chatroom">
+  <meta name="author" content="Chatty">
+  <meta name="robots" content="index, follow">
+  
+  <!-- Theme Color -->
+  <meta name="theme-color" content="#667eea">
+  
+  <!-- Canonical URL -->
+  <link rel="canonical" href="https://chatty-rszn.onrender.com/">
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://chatty-rszn.onrender.com/">
+  <meta property="og:title" content="Chatty - 실시간 채팅 플랫폼">
+  <meta property="og:description" content="WebSocket 기반 실시간 채팅 애플리케이션. 다중 채팅방, 메시지 영속성, 무한 스크롤을 지원하는 가볍고 빠른 채팅 플랫폼입니다.">
+  <meta property="og:image" content="https://chatty-rszn.onrender.com/og-image.png">
+  <meta property="og:locale" content="ko_KR">
+  <meta property="og:site_name" content="Chatty">
+  
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://chatty-rszn.onrender.com/">
+  <meta property="twitter:title" content="Chatty - 실시간 채팅 플랫폼">
+  <meta property="twitter:description" content="WebSocket 기반 실시간 채팅 애플리케이션. 다중 채팅방, 메시지 영속성, 무한 스크롤을 지원하는 가볍고 빠른 채팅 플랫폼입니다.">
+  <meta property="twitter:image" content="https://chatty-rszn.onrender.com/og-image.png">
+  
+  <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png">
+  
+  <!-- Stylesheet -->
   <link rel="stylesheet" href="styles.css">
+  
+  <!-- Schema.org Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Chatty",
+    "description": "WebSocket 기반 실시간 채팅 애플리케이션",
+    "url": "https://chatty-rszn.onrender.com/",
+    "applicationCategory": "CommunicationApplication",
+    "operatingSystem": "Any",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "KRW"
+    },
+    "featureList": [
+      "실시간 메시징",
+      "다중 채팅방",
+      "메시지 영속성",
+      "무한 스크롤",
+      "사용자 관리"
+    ],
+    "browserRequirements": "Requires JavaScript. Requires HTML5.",
+    "inLanguage": "ko-KR"
+  }
+  </script>
 </head>
 <body>
   <!-- 닉네임 입력 화면 -->
-  <div id="login-screen" class="screen">
+  <main id="login-screen" class="screen">
     <div class="login-container">
       <h1>💬 Chatty</h1>
       <p class="subtitle">실시간 채팅을 시작해보세요!</p>
@@ -27,10 +87,10 @@
       
       <p id="login-error" class="error-message"></p>
     </div>
-  </div>
+  </main>
 
   <!-- 채팅 화면 -->
-  <div id="chat-screen" class="screen hidden">
+  <main id="chat-screen" class="screen hidden">
     <div class="chat-container">
       <!-- 헤더 -->
       <header class="chat-header">
@@ -79,7 +139,7 @@
         </aside>
       </div>
     </div>
-  </div>
+  </main>
 
   <!-- Room 생성 모달 -->
   <div id="create-room-modal" class="modal hidden">
