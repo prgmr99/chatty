@@ -26,6 +26,10 @@ let currentUser = null;
 let users = [];
 let rooms = []; // Room 목록
 let currentRoom = null; // 현재 room ID
+let currentRoomMessageOffset = 0; // 페이지네이션 오프셋
+let hasMoreMessages = true; // 추가 로드 가능 여부
+let isLoadingMessages = false; // 메시지 로딩 중 플래그
+let lastMessageTimestamp = null; // 마지막 메시지 타임스탬프 (동기화용)
 
 // ===== Phase 2: WebSocket 연결 =====
 
@@ -62,7 +66,18 @@ function connectWebSocket() {
     
     // 채팅 화면이 표시 중이면 재연결 시도
     if (!chatScreen.classList.contains('hidden')) {
-      addSystemMessage('연결이 끊어졌습니다. 페이지를 새로고침해주세요.');
+      addSystemMessage('연결이 끊어졌습니다. 재연결 중...');
+      
+      // 3초 후 재연결 및 동기화 시도
+      setTimeout(() => {
+        connectWebSocket();
+        // 재연결 성공 후 동기화 (연결 후 대기 필요)
+        setTimeout(() => {
+          if (currentUser && currentRoom && lastMessageTimestamp) {
+            syncMessagesAfterReconnect(currentRoom, lastMessageTimestamp);
+          }
+        }, 1000);
+      }, 3000);
     }
   };
   
@@ -111,12 +126,20 @@ function handleServerMessage(data) {
       // Room 입장 성공
       messagesContainer.innerHTML = ''; // 메시지 초기화
       updateUserList(data.users);
+      
       // Room 정보는 서버에서 roomId로만 보내므로, 목록에서 찾아야 함
       const room = rooms.find(r => r.id === data.roomId);
       if (room) {
         updateCurrentRoomInfo(data.roomId, room.name, data.users.length);
         addSystemMessage(`Joined room: ${room.name}`);
       }
+      
+      // 페이지네이션 초기화
+      currentRoomMessageOffset = 0;
+      hasMoreMessages = true;
+      
+      // 메시지 히스토리 로드
+      loadMessageHistory(data.roomId, 50, 0);
       break;
 
     case 'user-joined-room':
@@ -129,6 +152,16 @@ function handleServerMessage(data) {
       //  다른 사용자가 room에서 퇴장
       addSystemMessage(`${data.nickname} left the room`);
       updateUserList(data.users);
+      break;
+
+    case 'message-history':
+      // 메시지 히스토리 수신
+      handleMessageHistory(data);
+      break;
+
+    case 'messages-sync':
+      // 오프라인 동기화 메시지
+      handleMessagesSync(data);
       break;
       
     case 'error':
@@ -177,6 +210,10 @@ function handleNewMessage(data) {
     timestamp: data.timestamp,
     isOwn
   });
+  
+  // 마지막 메시지 타임스탬프 업데이트 (동기화용)
+  lastMessageTimestamp = data.timestamp;
+  saveLastMessageTimestamp(data.roomId, data.timestamp);
 }
 
 // 새 사용자 입장 처리
@@ -195,6 +232,84 @@ function handleUserLeft(data) {
 function handleServerError(data) {
   console.error('서버 에러:', data.message);
   showLoginError(data.message);
+}
+
+// 메시지 히스토리 처리
+function handleMessageHistory(data) {
+  console.log('📜 메시지 히스토리 수신:', data.messages.length, '개');
+  
+  isLoadingMessages = false;
+  hasMoreMessages = data.hasMore;
+  
+  // 로딩 표시기 제거
+  removeLoadingIndicator();
+  
+  if (data.messages.length === 0) {
+    if (data.offset === 0) {
+      // 최초 로드이고 메시지가 없으면 시스템 메시지 표시
+      addSystemMessage('아직 메시지가 없습니다. 대화를 시작해보세요!');
+    }
+    return;
+  }
+  
+  // 현재 스크롤 위치 저장 (추가 로드 시 스크롤 유지용)
+  const previousScrollHeight = messagesContainer.scrollHeight;
+  const previousScrollTop = messagesContainer.scrollTop;
+  
+  // 메시지 추가 (오래된 메시지를 위에 추가)
+  data.messages.forEach(msg => {
+    const isOwn = currentUser && msg.userId === currentUser.id;
+    prependMessage({
+      nickname: msg.nickname,
+      content: msg.content,
+      timestamp: msg.timestamp,
+      isOwn
+    });
+  });
+  
+  // 마지막 메시지 타임스탬프 업데이트
+  if (data.messages.length > 0) {
+    const latestMessage = data.messages[data.messages.length - 1];
+    lastMessageTimestamp = latestMessage.timestamp;
+    saveLastMessageTimestamp(data.roomId, latestMessage.timestamp);
+  }
+  
+  // 스크롤 위치 복원 (추가 로드 시)
+  if (data.offset > 0) {
+    const newScrollHeight = messagesContainer.scrollHeight;
+    messagesContainer.scrollTop = previousScrollTop + (newScrollHeight - previousScrollHeight);
+  } else {
+    // 최초 로드시 최하단으로 스크롤
+    scrollToBottom();
+  }
+  
+  currentRoomMessageOffset = data.offset + data.messages.length;
+}
+
+// 오프라인 동기화 메시지 처리
+function handleMessagesSync(data) {
+  console.log('🔄 메시지 동기화:', data.messages.length, '개');
+  
+  if (data.messages.length === 0) {
+    return;
+  }
+  
+  data.messages.forEach(msg => {
+    const isOwn = currentUser && msg.userId === currentUser.id;
+    addMessage({
+      nickname: msg.nickname,
+      content: msg.content,
+      timestamp: msg.timestamp,
+      isOwn
+    });
+  });
+  
+  // 마지막 메시지 타임스탬프 업데이트
+  const latestMessage = data.messages[data.messages.length - 1];
+  lastMessageTimestamp = latestMessage.timestamp;
+  saveLastMessageTimestamp(data.roomId, latestMessage.timestamp);
+  
+  addSystemMessage(`${data.messages.length}개의 메시지를 동기화했습니다.`);
 }
 
 // WebSocket으로 메시지 전송
@@ -327,6 +442,27 @@ function addMessage({ nickname, content, timestamp, isOwn = false }) {
   scrollToBottom();
 }
 
+// 메시지 위에 추가 (페이지네이션용)
+function prependMessage({ nickname, content, timestamp, isOwn = false }) {
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message ${isOwn ? 'own' : 'other'}`;
+  
+  const time = new Date(timestamp).toLocaleTimeString('ko-KR', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  
+  messageDiv.innerHTML = `
+    <div class="message-header">
+      <span class="message-nickname">${nickname}</span>
+      <span class="message-time">${time}</span>
+    </div>
+    <div class="message-content">${escapeHtml(content)}</div>
+  `;
+  
+  messagesContainer.insertBefore(messageDiv, messagesContainer.firstChild);
+}
+
 // 시스템 메시지 추가
 function addSystemMessage(content) {
   const messageDiv = document.createElement('div');
@@ -365,6 +501,94 @@ function escapeHtml(text) {
   div.textContent = text;
   return div.innerHTML;
 }
+
+// ===== Phase 2: 메시지 영속성 =====
+
+// 메시지 히스토리 로드
+function loadMessageHistory(roomId, limit = 50, offset = 0) {
+  if (isLoadingMessages) {
+    return; // 이미 로딩 중
+  }
+  
+  if (!hasMoreMessages && offset > 0) {
+    return; // 더 이상 로드할 메시지 없음
+  }
+  
+  isLoadingMessages = true;
+  
+  // 로딩 표시기 추가
+  if (offset > 0) {
+    addLoadingIndicator();
+  }
+  
+  sendToServer({
+    type: 'get-messages',
+    roomId: roomId,
+    limit: limit,
+    offset: offset
+  });
+}
+
+// 재연결 후 메시지 동기화
+function syncMessagesAfterReconnect(roomId, since) {
+  console.log('🔄 메시지 동기화 요청:', since);
+  
+  sendToServer({
+    type: 'get-messages-since',
+    roomId: roomId,
+    since: since
+  });
+}
+
+// 로딩 표시기 추가
+function addLoadingIndicator() {
+  // 이미 있으면 반환
+  if (messagesContainer.querySelector('.loading-indicator')) {
+    return;
+  }
+  
+  const loadingDiv = document.createElement('div');
+  loadingDiv.className = 'loading-indicator';
+  loadingDiv.textContent = '이전 메시지 불러오는 중...';
+  
+  messagesContainer.insertBefore(loadingDiv, messagesContainer.firstChild);
+}
+
+// 로딩 표시기 제거
+function removeLoadingIndicator() {
+  const loadingDiv = messagesContainer.querySelector('.loading-indicator');
+  if (loadingDiv) {
+    loadingDiv.remove();
+  }
+}
+
+// 마지막 메시지 타임스탬프 저장 (로컬스토리지)
+function saveLastMessageTimestamp(roomId, timestamp) {
+  try {
+    localStorage.setItem(`lastMessage_${roomId}`, timestamp);
+  } catch (error) {
+    console.error('로컬스토리지 저장 실패:', error);
+  }
+}
+
+// 마지막 메시지 타임스탬프 불러오기
+function getLastMessageTimestamp(roomId) {
+  try {
+    return localStorage.getItem(`lastMessage_${roomId}`);
+  } catch (error) {
+    console.error('로컬스토리지 읽기 실패:', error);
+    return null;
+  }
+}
+
+// 스크롤 이벤트 리스너 (무한 스크롤)
+messagesContainer.addEventListener('scroll', () => {
+  // 최상단에 도달하면 추가 메시지 로드
+  if (messagesContainer.scrollTop === 0 && !isLoadingMessages && hasMoreMessages) {
+    console.log('🔼 추가 메시지 로드');
+    loadMessageHistory(currentRoom, 50, currentRoomMessageOffset);
+  }
+});
 
 // ===== Phase 1: Room 기능 =====
 

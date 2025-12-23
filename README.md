@@ -50,7 +50,9 @@ PORT=3000 pnpm start
 simple-chat/
 ├── server/
 │   ├── index.js          # Express + WebSocket server
-│   └── roomManager.js    # Room management logic
+│   ├── roomManager.js    # Room management logic
+│   ├── messageModel.js   # SQLite message persistence
+│   └── messages.db       # SQLite database file (auto-generated)
 ├── public/
 │   ├── index.html        # Client UI
 │   ├── styles.css        # Stylesheets
@@ -69,6 +71,7 @@ simple-chat/
 **Backend**
 - Express 5.2.1 - HTTP server
 - ws 8.18.3 - WebSocket server
+- better-sqlite3 11.10.0 - SQLite database for message persistence
 - Node.js - Runtime environment
 
 **Frontend**
@@ -81,9 +84,18 @@ simple-chat/
 
 ## Features
 
-### Current Implementation (v1.1)
+### Current Implementation (v1.2) 🆕
 
-1. **Multi-Room Chat System** 🆕
+1. **Message Persistence** ✨
+   - SQLite database integration
+   - Automatic message saving on send
+   - Message history retrieval on room join
+   - Pagination support (50 messages per load)
+   - Infinite scroll for loading older messages
+   - Offline message synchronization
+   - LocalStorage-based timestamp tracking
+
+2. **Multi-Room Chat System**
    - Create custom chat rooms
    - Join and switch between rooms
    - Room list with user counts
